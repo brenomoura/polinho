@@ -3,12 +3,11 @@ import logging
 import ujson
 from mashumaro import MissingField
 from mashumaro.exceptions import InvalidFieldValue
-from socketify import App
-
 from models.transaction import CreateTransaction
-from services.customer_service import get_customer_info
-from services.exceptions import BalanceInconsistency
+from services.customer_service import get_customer_statement
+from services.exceptions import BalanceInconsistency, CustomerNotFound
 from services.transaction_service import process_transaction
+from socketify import App
 
 app = App()
 
@@ -28,7 +27,7 @@ def log(handler):
 @app.on_error
 async def on_error(error, res, req):
     logging.exception("Something goes %s" % str(error))
-    if res != None:
+    if res is not None:
         res.write_status(500)
         res.end("Sorry something went wrong")
 
@@ -45,16 +44,27 @@ async def create_transaction(res, req):
         balance_info = process_transaction(customer_id, transaction_creation_data)
         res.write_status(200).cork_end(balance_info.to_dict())
     except (MissingField, InvalidFieldValue, BalanceInconsistency):
-        error_msg = "validation fail, or inconsistency check if any missing field, wrongs types, or "
+        error_msg = "Validation failed or inconsistency detected. Please check for any missing fields or incorrect data types. Additionally, review your account balance."
         logging.exception(error_msg)
         res.write_status(422).cork_end(error_msg)
+    except CustomerNotFound as error:
+        error_msg = str(error)
+        logging.exception(error_msg)
+        res.write_status(404).cork_end(error_msg)
+
 
 
 @log
-async def get_customer_statement(res, req):
+async def customer_statement(res, req):
     customer_id = int(req.get_parameter(0))
-    customer_info = get_customer_info(customer_id)
-    res.write_status(200).cork_end(customer_info.to_dict())
+    try:
+        customer_info = get_customer_statement(customer_id)
+        res.write_status(200).cork_end(customer_info.to_dict())
+    except CustomerNotFound as error:
+        error_msg = str(error)
+        logging.exception(error_msg)
+        res.write_status(404).cork_end(error_msg)
+
 
 
 def not_found(res, req):
@@ -62,7 +72,7 @@ def not_found(res, req):
 
 
 app.post("/clientes/:id/transacoes", create_transaction)
-app.get("/clientes/:id/extrato", get_customer_statement)
+app.get("/clientes/:id/extrato", customer_statement)
 
 
 app.listen(

@@ -12,4 +12,4 @@ COPY . .
 
 EXPOSE 3000
 
-CMD [ "pypy3", "./main.py" ]
+CMD [ "pypy3", "./src/main.py" ]

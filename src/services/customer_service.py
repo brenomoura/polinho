@@ -1,26 +1,46 @@
 from datetime import datetime
-from models.customer import BalanceInfo, CustomerInfo
+
+from models.customer import (
+    CustomerBalanceInfo,
+    CustomerBalanceStatement,
+    CustomerStatement,
+)
 from models.transaction import Transaction, TransactionKind
+from services.exceptions import CustomerNotFound
 
 
-def get_customer_balance_info(customer_id: int) -> BalanceInfo:
+def get_customer_balance_info(customer_id: int) -> CustomerBalanceInfo:
     balance_info_data = {
         "limite": 100000,
         "total": -9098,
-        "data_extrato": datetime.now(),
     }
-    return BalanceInfo(**balance_info_data)
+    # TODO - ADD THE DB INTERACTION HERE
+    if None:
+        raise CustomerNotFound("Customer not found")
+    return CustomerBalanceInfo(**balance_info_data)
 
 
-def get_customer_info(customer_id: int) -> CustomerInfo:
+def get_customer_statement(customer_id: int) -> CustomerStatement:
     customer_balance = get_customer_balance_info(customer_id)
+    balance_statement = CustomerBalanceStatement(
+        **{"data_extrato": datetime.now(), **customer_balance.to_dict()}
+    )
     customer_last_transactions = get_customer_last_transactions(customer_id)
-    return CustomerInfo(
-        saldo=customer_balance, ultimas_transacoes=customer_last_transactions
+    return CustomerStatement(
+        saldo=balance_statement, ultimas_transacoes=customer_last_transactions
     )
 
 
+def update_customer_balance(customer_id: int, new_balance: int) -> CustomerBalanceInfo:
+    # TODO - ADD THE DB INTERACTION HERE
+    updated_customer_balance = CustomerBalanceInfo(
+        **{"total": new_balance, "limite": 1000}
+    )
+    return updated_customer_balance
+
+
 def get_customer_last_transactions(customer_id: int) -> list[Transaction]:
+    # TODO - ADD THE DB INTERACTION HERE
     last_transactions = [
         Transaction(
             **{

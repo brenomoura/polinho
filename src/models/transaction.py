@@ -18,7 +18,8 @@ class _TransactionBase(DataClassDictMixin):
 
 
 @dataclass
-class CreateTransaction(_TransactionBase): ...
+class CreateTransaction(_TransactionBase):
+    ...
 
 
 @dataclass
@@ -26,9 +27,3 @@ class Transaction(_TransactionBase):
     realizado_em: datetime = field(
         metadata={"serialize": lambda v: v.strftime("%Y-%m-%dT%H:%M:%S.%fZ")}
     )
-
-
-@dataclass
-class TransactionBalanceInfo(DataClassDictMixin):
-    limite: int
-    saldo: int
