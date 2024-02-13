@@ -3,13 +3,22 @@ import logging
 import ujson
 from mashumaro import MissingField
 from mashumaro.exceptions import InvalidFieldValue
+from db.database import setup_pool
+from models.customer import GetCustomer
 from models.transaction import CreateTransaction
 from services.customer_service import get_customer_statement
 from services.exceptions import BalanceInconsistency, CustomerNotFound
 from services.transaction_service import process_transaction
 from socketify import App
 
-app = App()
+
+class CustomApp(App):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.db_conn = setup_pool().getconn()
+
+
+app = CustomApp()
 
 logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s", level=logging.INFO
@@ -37,11 +46,13 @@ app.json_serializer(ujson)
 
 @log
 async def create_transaction(res, req):
-    customer_id = int(req.get_parameter(0))
-    transacation_data = await res.get_json()
     try:
-        transaction_creation_data = CreateTransaction.from_dict(transacation_data)
-        balance_info = process_transaction(customer_id, transaction_creation_data)
+        customer_id = GetCustomer(id=req.get_parameter(0)).id
+        transacation_data = await res.get_json()
+        transaction_creation = CreateTransaction.from_dict(transacation_data)
+        balance_info = process_transaction(
+            customer_id, transaction_creation, app.db_conn
+        )
         res.write_status(200).cork_end(balance_info.to_dict())
     except (MissingField, InvalidFieldValue, BalanceInconsistency):
         error_msg = "Validation failed or inconsistency detected. Please check for any missing fields or incorrect data types. Additionally, review your account balance."
@@ -53,18 +64,16 @@ async def create_transaction(res, req):
         res.write_status(404).cork_end(error_msg)
 
 
-
 @log
 async def customer_statement(res, req):
     customer_id = int(req.get_parameter(0))
     try:
-        customer_info = get_customer_statement(customer_id)
+        customer_info = get_customer_statement(customer_id, app.db_conn)
         res.write_status(200).cork_end(customer_info.to_dict())
     except CustomerNotFound as error:
         error_msg = str(error)
         logging.exception(error_msg)
         res.write_status(404).cork_end(error_msg)
-
 
 
 def not_found(res, req):

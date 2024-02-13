@@ -6,14 +6,17 @@ from mashumaro import DataClassDictMixin
 
 from models.transaction import Transaction
 
+
 @dataclass
 class CustomerBalanceInfo(DataClassDictMixin):
-    total: int
+    saldo: int
     limite: int
 
 
 @dataclass
-class CustomerBalanceStatement(CustomerBalanceInfo):
+class CustomerBalanceStatement(DataClassDictMixin):
+    total: int
+    limite: int
     data_extrato: datetime = field(
         metadata={"serialize": lambda v: v.strftime("%Y-%m-%dT%H:%M:%S.%fZ")}
     )
