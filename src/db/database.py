@@ -1,8 +1,8 @@
-from psycopg_pool import ConnectionPool
+from psycopg2cffi.pool import SimpleConnectionPool
 
 
 def setup_pool():
-    pool = ConnectionPool(
-        "postgresql://admin:123@localhost:5432/rinha", min_size=1, max_size=1000
+    pool = SimpleConnectionPool(
+        minconn=1, maxconn=100, dsn="postgresql://admin:123@db:5432/rinha"
     )
     return pool
