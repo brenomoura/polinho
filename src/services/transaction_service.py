@@ -11,9 +11,9 @@ from services.exceptions import BalanceInconsistency
 
 
 def process_transaction(
-    customer_id: int, transaction: CreateTransaction, db_conn
+    customer_id: int, transaction: CreateTransaction, db_handler
 ) -> CustomerBalanceInfo:
-    customer_balance = get_customer_balance_info(customer_id, db_conn)
+    customer_balance = get_customer_balance_info(customer_id, db_handler)
 
     if transaction.tipo == TransactionKind.debit:
         new_balance = customer_balance.saldo - transaction.valor
@@ -22,7 +22,6 @@ def process_transaction(
     else:
         new_balance = customer_balance.saldo + transaction.valor
     # lock here - procedure maybe
-    create_transaction(customer_id, transaction, db_conn)
-    updated_balance, limit = update_customer_balance(customer_id, new_balance, db_conn)
-    db_conn.commit()
+    create_transaction(customer_id, transaction, db_handler)
+    updated_balance, limit = update_customer_balance(customer_id, new_balance, db_handler)
     return CustomerBalanceInfo(saldo=updated_balance, limite=limit)

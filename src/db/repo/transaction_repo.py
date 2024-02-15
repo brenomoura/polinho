@@ -1,8 +1,8 @@
 from models.transaction import CreateTransaction
 
 
-def create_transaction(customer_id: int, transaction: CreateTransaction, db_conn):
-    with db_conn.cursor() as cursor:
+def create_transaction(customer_id: int, transaction: CreateTransaction, db_handler):
+    with db_handler.get_db_cursor(commit=True) as cursor:
         cursor.execute(
             "INSERT INTO transacoes (cliente_id, tipo, valor, descricao) VALUES (%s, %s, %s, %s);",
             (
@@ -14,8 +14,8 @@ def create_transaction(customer_id: int, transaction: CreateTransaction, db_conn
         )
 
 
-def get_customer_last_transactions(customer_id: int, db_conn) -> tuple:
-    with db_conn.cursor() as cursor:
+def get_customer_last_transactions(customer_id: int, db_handler) -> tuple:
+    with db_handler.get_db_cursor(commit=True) as cursor:
         query = """
             SELECT
                 cliente_id,

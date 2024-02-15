@@ -3,7 +3,7 @@ import logging
 import ujson
 from mashumaro import MissingField
 from mashumaro.exceptions import InvalidFieldValue
-from db.database import setup_pool
+from db.database import DatabaseHandler
 from models.customer import GetCustomer
 from models.transaction import CreateTransaction
 from services.customer_service import get_customer_statement
@@ -15,7 +15,7 @@ from socketify import App
 class CustomApp(App):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.db_conn = setup_pool().getconn()
+        self.db_handler = DatabaseHandler()
 
 
 app = CustomApp()
@@ -51,7 +51,7 @@ async def create_transaction(res, req):
         transacation_data = await res.get_json()
         transaction_creation = CreateTransaction.from_dict(transacation_data)
         balance_info = process_transaction(
-            customer_id, transaction_creation, app.db_conn
+            customer_id, transaction_creation, app.db_handler
         )
         res.write_status(200).cork_end(balance_info.to_dict())
     except (MissingField, InvalidFieldValue, BalanceInconsistency):
@@ -68,7 +68,7 @@ async def create_transaction(res, req):
 async def customer_statement(res, req):
     customer_id = int(req.get_parameter(0))
     try:
-        customer_info = get_customer_statement(customer_id, app.db_conn)
+        customer_info = get_customer_statement(customer_id, app.db_handler)
         res.write_status(200).cork_end(customer_info.to_dict())
     except CustomerNotFound as error:
         error_msg = str(error)

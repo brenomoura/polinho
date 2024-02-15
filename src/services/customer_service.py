@@ -12,16 +12,17 @@ from models.transaction import Transaction, TransactionKind
 from services.exceptions import CustomerNotFound
 
 
-def get_customer_balance_info(customer_id: int, db_conn) -> CustomerBalanceInfo:
-    customer_info = get_customer_info(customer_id, db_conn)
+def get_customer_balance_info(customer_id: int, db_handler) -> CustomerBalanceInfo:
+    customer_info = get_customer_info(customer_id, db_handler)
+    if not customer_info:
+        raise CustomerNotFound("Customer not found")
+
     _, _, limit, balance = customer_info
     return CustomerBalanceInfo(limite=limit, saldo=balance)
 
 
-def get_customer_statement(customer_id: int, db_conn) -> CustomerStatement:
-    customer_balance = get_customer_balance_info(customer_id, db_conn)
-    if not customer_balance:
-        raise CustomerNotFound("Customer not found")
+def get_customer_statement(customer_id: int, db_handler) -> CustomerStatement:
+    customer_balance = get_customer_balance_info(customer_id, db_handler)
     balance_statement = CustomerBalanceStatement(
         **{
             "data_extrato": datetime.utcnow(),
@@ -29,7 +30,7 @@ def get_customer_statement(customer_id: int, db_conn) -> CustomerStatement:
             "limite": customer_balance.limite,
         }
     )
-    customer_last_transactions = get_customer_last_transactions(customer_id, db_conn)
+    customer_last_transactions = get_customer_last_transactions(customer_id, db_handler)
     return CustomerStatement(
         saldo=balance_statement,
         ultimas_transacoes=[
