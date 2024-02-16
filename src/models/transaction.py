@@ -23,39 +23,21 @@ class CreateTransaction(_TransactionBase):
     ...
 
     @classmethod
-    def __post_deserialize__(cls, obj):
-        # check orders and validate with the follwing payloads
-        """
-        {"valor": 1.2, "tipo": "d", "descricao": "devolve"}
-        {"valor": 1, "tipo": "x", "descricao": "devolve"}
-        {"valor": 1, "tipo": "c", "descricao": "123456789 e mais um pouco"}
-        {"valor": 1, "tipo": "c", "descricao": ""}
-        {"valor": 1, "tipo": "c", "descricao": null}
-        """
-        if obj.descricao is None:
-            raise InvalidFieldValue(
-                "descricao",
-                "string",
-                cls,
-                "description can't be null",
-            )
+    def __pre_deserialize__(cls, d):
+        errors = []
+        descricao = d.get("descricao")
+        valor = d.get("valor")
+        if not descricao:
+            errors.append("description can't be null or empty")
 
-        if obj.descricao and len(obj.descricao) > 10:
-            raise InvalidFieldValue(
-                "descricao",
-                "string",
-                cls,
-                "description can't be greater than 10 characters",
-            )
+        if descricao and len(descricao) > 10:
+            errors.append("description can't be greater than 10 characters")
         
-        if not isinstance(obj.valor, int):
-            raise InvalidFieldValue(
-                "valor",
-                "integer",
-                cls,
-                "valor must be an integer",
-            )
-        return obj
+        if valor and not isinstance(valor, int):
+            errors.append("valor must be an integer")
+        if errors:
+            raise InvalidFieldValue("", "", "", cls, str(errors))
+        return d
 
 
 @dataclass
