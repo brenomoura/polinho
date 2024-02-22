@@ -1,6 +1,5 @@
 from contextlib import contextmanager
 
-import psycopg2cffi
 from psycopg2cffi.pool import ThreadedConnectionPool
 
 

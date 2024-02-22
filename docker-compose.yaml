@@ -18,8 +18,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.5"
-          memory: "150MB"
+          cpus: "0.55"
+          memory: "250MB"
 
   api02:
     <<: *api 
@@ -40,11 +40,11 @@ services:
       resources:
         limits:
           cpus: "0.20"
-          memory: "100MB"
+          memory: "10MB"
 
   db:
     image: postgres:16.1
-    command: 'postgres -c max_connections=100'
+    command: 'postgres -c max_connections=30'
     hostname: db
     environment:
       - POSTGRES_PASSWORD=123
@@ -57,8 +57,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.30"
-          memory: "150MB"
+          cpus: "0.75"
+          memory: "290MB"
     healthcheck:
       test: ["CMD-SHELL", "sh -c 'pg_isready -U admin -d rinha'"]
       interval: 5s
