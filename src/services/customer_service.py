@@ -1,7 +1,5 @@
 from datetime import datetime
 
-from db.repo.customer_repo import get_customer_info
-from db.repo.transaction_repo import get_customer_last_transactions
 from models.customer import (
     CustomerBalanceInfo,
     CustomerBalanceStatement,
@@ -12,8 +10,10 @@ from models.transaction import Transaction, TransactionKind
 from services.exceptions import CustomerNotFound
 
 
-def get_customer_balance_info(customer_id: int, db_handler) -> CustomerBalanceInfo:
-    customer_info = get_customer_info(customer_id, db_handler)
+def get_customer_balance_info(customer_id: int, cursor) -> CustomerBalanceInfo:
+    cursor.execute("SELECT * FROM clientes WHERE id = %s;" % customer_id)
+    customer_info = cursor.fetchone()
+
     if not customer_info:
         raise CustomerNotFound("Customer not found")
 
@@ -22,15 +22,35 @@ def get_customer_balance_info(customer_id: int, db_handler) -> CustomerBalanceIn
 
 
 def get_customer_statement(customer_id: int, db_handler) -> CustomerStatement:
-    customer_balance = get_customer_balance_info(customer_id, db_handler)
-    balance_statement = CustomerBalanceStatement(
-        **{
-            "data_extrato": datetime.utcnow(),
-            "total": customer_balance.saldo,
-            "limite": customer_balance.limite,
-        }
-    )
-    customer_last_transactions = get_customer_last_transactions(customer_id, db_handler)
+    with db_handler.get_db_connection() as conn:
+        cursor = conn.cursor()
+        customer_balance = get_customer_balance_info(customer_id, cursor)
+        balance_statement = CustomerBalanceStatement(
+            **{
+                "data_extrato": datetime.utcnow(),
+                "total": customer_balance.saldo,
+                "limite": customer_balance.limite,
+            }
+        )
+        query = """
+            SELECT
+                cliente_id,
+                tipo,
+                valor,
+                descricao,
+                realizada_em
+            FROM
+                transacoes
+            WHERE
+                cliente_id = %s
+            ORDER BY
+                realizada_em DESC
+            LIMIT 10;
+        """ % (customer_id)
+        cursor.execute(query)
+        customer_last_transactions = cursor.fetchall()
+        cursor.close()
+
     return CustomerStatement(
         saldo=balance_statement,
         ultimas_transacoes=[

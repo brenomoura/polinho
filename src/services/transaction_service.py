@@ -1,5 +1,3 @@
-from db.repo.customer_repo import update_customer_balance
-from db.repo.transaction_repo import create_transaction
 from models.customer import CustomerBalanceInfo
 from models.transaction import (
     CreateTransaction,
@@ -13,15 +11,31 @@ from services.exceptions import BalanceInconsistency
 def process_transaction(
     customer_id: int, transaction: CreateTransaction, db_handler
 ) -> CustomerBalanceInfo:
-    customer_balance = get_customer_balance_info(customer_id, db_handler)
+    with db_handler.get_db_connection() as conn:
+        cursor = conn.cursor()
+        customer_balance = get_customer_balance_info(customer_id, cursor)
 
-    if transaction.tipo == TransactionKind.debit:
-        new_balance = customer_balance.saldo - transaction.valor
-        if new_balance < -customer_balance.limite:
-            raise BalanceInconsistency("Invalid transaction")
-    else:
-        new_balance = customer_balance.saldo + transaction.valor
-    # lock here - procedure maybe
-    create_transaction(customer_id, transaction, db_handler)
-    updated_balance, limit = update_customer_balance(customer_id, new_balance, db_handler)
+        if transaction.tipo == TransactionKind.debit:
+            new_balance = customer_balance.saldo - transaction.valor
+            if new_balance < -customer_balance.limite:
+                raise BalanceInconsistency("Invalid transaction")
+        else:
+            new_balance = customer_balance.saldo + transaction.valor
+        cursor.execute(
+            "INSERT INTO transacoes (cliente_id, tipo, valor, descricao) VALUES (%s, %s, %s, %s);",
+            (
+                customer_id,
+                transaction.tipo.value,
+                transaction.valor,
+                transaction.descricao,
+            ),
+        )
+        result = cursor.execute(
+            "UPDATE clientes SET saldo = %s WHERE id = %s RETURNING saldo, limite;"
+            % (new_balance, customer_id)
+        )
+        result = cursor.fetchone()
+        updated_balance, limit = result
+        cursor.close()
+        conn.commit()
     return CustomerBalanceInfo(saldo=updated_balance, limite=limit)

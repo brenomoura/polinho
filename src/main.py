@@ -76,10 +76,6 @@ async def customer_statement(res, req):
         res.write_status(404).cork_end(error_msg)
 
 
-def not_found(res, req):
-    res.write_status(404).end("Not Found")
-
-
 app.post("/clientes/:id/transacoes", create_transaction)
 app.get("/clientes/:id/extrato", customer_statement)
 

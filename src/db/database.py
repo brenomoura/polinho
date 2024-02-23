@@ -1,6 +1,6 @@
 from contextlib import contextmanager
-
 from psycopg2cffi.pool import ThreadedConnectionPool
+import os
 
 
 class DatabaseHandler:
@@ -9,7 +9,7 @@ class DatabaseHandler:
 
     def setup_pool(self):
         pool = ThreadedConnectionPool(
-            minconn=1, maxconn=100, dsn="postgresql://admin:123@db:5432/rinha"
+            minconn=1, maxconn=os.environ.get("MAX_CONN"), dsn=os.environ.get("DB_URL")
         )
         return pool
 
@@ -20,14 +20,3 @@ class DatabaseHandler:
             yield connection
         finally:
             self.pool.putconn(connection)
-
-    @contextmanager
-    def get_db_cursor(self, commit=False):
-        with self.get_db_connection() as connection:
-            cursor = connection.cursor()
-            try:
-                yield cursor
-                if commit:
-                    connection.commit()
-            finally:
-                cursor.close()
